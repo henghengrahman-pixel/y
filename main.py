@@ -1,6 +1,3 @@
-# MAIN.PY FINAL FIX 100%
-
-```python
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
