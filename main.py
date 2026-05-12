@@ -638,34 +638,3 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-
-## RAILWAY VARIABLES
-
-```env
-BOT_TOKEN=ISI_TOKEN_BOT
-ADMIN_IDS=123456789,987654321
-GROUP_ID=-1001234567890
-DATA_DIR=/data
-TZ=Asia/Jakarta
-```
-
-## FITUR FINAL
-
-* Shift pagi 05:00 - 06:15 WIB
-* Shift malam 17:00 - 18:15 WIB
-* Telat dihitung Rp50.000 / menit
-* Wajib `/start`
-* Pertama pilih shift otomatis jadi shift tetap
-* Bot simpan history shift member
-* Shift pagi tidak tercampur shift malam
-* Jam 06:45 notif siapa shift pagi belum absensi
-* Jam 18:45 notif siapa shift malam belum absensi
-* Notif telat hanya admin
-* Hanya admin utama bisa tambah bot ke grup
-* Jika non admin tambah bot → bot otomatis keluar
-* Data permanen di `/data`
-* Aman Railway
-* Tanpa database tambahan
-* Anti bentrok shift
-* Anti notif spam
-* Aman restart bot
