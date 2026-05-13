@@ -339,6 +339,29 @@ async def start_absensi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_shift = shift_history.get(str(user.id))
 
+    old_shift_map = {
+        "pagi": "jam_6_pagi",
+        "siang": "jam_11_siang",
+        "malam": "jam_6_sore",
+        "tengah_malam": "jam_11_malam"
+    }
+
+    if user_shift in old_shift_map:
+
+        user_shift = old_shift_map[user_shift]
+
+        shift_history[str(user.id)] = user_shift
+
+        save_shift_history()
+
+    if user_shift and user_shift not in SHIFT_CONFIG:
+
+        shift_history.pop(str(user.id), None)
+
+        save_shift_history()
+
+        user_shift = None
+
     if user_shift:
 
         config = SHIFT_CONFIG[user_shift]
@@ -443,6 +466,16 @@ async def handle_absen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     shift = query.data.replace("absen_", "")
 
+    old_shift_map = {
+        "pagi": "jam_6_pagi",
+        "siang": "jam_11_siang",
+        "malam": "jam_6_sore",
+        "tengah_malam": "jam_11_malam"
+    }
+
+    if shift in old_shift_map:
+        shift = old_shift_map[shift]
+
     if shift not in SHIFT_CONFIG:
 
         return await query.message.reply_text(
@@ -450,6 +483,22 @@ async def handle_absen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     saved_shift = shift_history.get(str(user.id))
+
+    if saved_shift in old_shift_map:
+
+        saved_shift = old_shift_map[saved_shift]
+
+        shift_history[str(user.id)] = saved_shift
+
+        save_shift_history()
+
+    if saved_shift and saved_shift not in SHIFT_CONFIG:
+
+        shift_history.pop(str(user.id), None)
+
+        save_shift_history()
+
+        saved_shift = None
 
     if saved_shift and saved_shift != shift:
 
@@ -554,310 +603,3 @@ async def handle_absen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pesan,
         parse_mode="Markdown"
     )
-
-
-async def cek_absensi(context: ContextTypes.DEFAULT_TYPE):
-
-    now = datetime.now(TIMEZONE)
-
-    today = ensure_today()
-
-    for shift, config in SHIFT_CONFIG.items():
-
-        notif_key = (
-            f"{today}-{shift}-"
-            f"{config['notif_jam']:02d}"
-            f"{config['notif_menit']:02d}"
-        )
-
-        if notification_history.get(today, {}).get(notif_key):
-            continue
-
-        if (
-            now.hour == config["notif_jam"]
-            and now.minute == config["notif_menit"]
-        ):
-
-            data_shift = absensi[today].get(shift, {})
-
-            belum_absen = []
-
-            for uid, member_shift in shift_history.items():
-
-                if member_shift != shift:
-                    continue
-
-                if uid not in data_shift:
-
-                    nama = members.get(uid, {}).get("nama", uid)
-
-                    belum_absen.append(f"• {nama}")
-
-            if belum_absen:
-
-                pesan = (
-                    f"🚨 *STAFF BELUM ABSENSI*\n\n"
-                    f"📌 {config['label']}\n\n"
-                    + "\n".join(belum_absen)
-                )
-
-            else:
-
-                pesan = (
-                    f"✅ Semua staff "
-                    f"{config['label']} sudah absensi."
-                )
-
-            await kirim_admin(context, pesan)
-
-            notification_history.setdefault(today, {})
-            notification_history[today][notif_key] = True
-
-            save_notification_history()
-
-
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-
-    if not user or not is_owner_admin(user.id):
-        return
-
-    today = ensure_today()
-
-    text = "📋 *STATUS ABSENSI HARI INI*\n\n"
-
-    for shift, config in SHIFT_CONFIG.items():
-
-        text += f"{config['button']}\n"
-
-        data = absensi[today].get(shift, {})
-
-        if not data:
-
-            text += "Belum ada absensi.\n\n"
-
-            continue
-
-        for item in data.values():
-
-            text += (
-                f"👤 {item.get('nama', '-')}\n"
-                f"🕘 {item.get('jam', '-')}\n"
-            )
-
-            telat = int(item.get("telat_menit", 0))
-            denda = int(item.get("denda", 0))
-
-            if telat > 0:
-
-                text += (
-                    f"⚠️ Telat {telat} menit\n"
-                    f"💸 {rupiah(denda)}\n"
-                )
-
-            text += "\n"
-
-    await update.message.reply_text(
-        text,
-        parse_mode="Markdown"
-    )
-
-
-async def list_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-
-    if not user or not is_owner_admin(user.id):
-        return
-
-    if not shift_history:
-
-        return await update.message.reply_text(
-            "Belum ada data shift staff."
-        )
-
-    hasil = "📋 *DATA SHIFT STAFF*\n\n"
-
-    for shift_key, config in SHIFT_CONFIG.items():
-
-        hasil += f"{config['button']}\n"
-
-        daftar = []
-
-        for uid, shift in shift_history.items():
-
-            if shift == shift_key:
-
-                nama = members.get(uid, {}).get("nama", uid)
-
-                daftar.append(f"• {nama}")
-
-        hasil += (
-            "\n".join(daftar)
-            if daftar else
-            "-"
-        )
-
-        hasil += "\n\n"
-
-    await update.message.reply_text(
-        hasil,
-        parse_mode="Markdown"
-    )
-
-
-async def reset_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-
-    if not user or not is_owner_admin(user.id):
-        return
-
-    if not update.message.reply_to_message:
-
-        return await update.message.reply_text(
-            (
-                "Reply pesan staff lalu gunakan:\n\n"
-                "/resetshift jam_6_pagi\n"
-                "/resetshift jam_11_siang\n"
-                "/resetshift jam_6_sore\n"
-                "/resetshift jam_11_malam"
-            )
-        )
-
-    if len(context.args) < 1:
-
-        return await update.message.reply_text(
-            (
-                "Masukkan shift baru.\n\n"
-                "Contoh:\n"
-                "/resetshift jam_6_sore"
-            )
-        )
-
-    new_shift = context.args[0].lower()
-
-    if new_shift not in SHIFT_CONFIG:
-
-        return await update.message.reply_text(
-            "❌ Shift tidak valid."
-        )
-
-    target = update.message.reply_to_message.from_user
-
-    old_shift = shift_history.get(str(target.id), "-")
-
-    shift_history[str(target.id)] = new_shift
-
-    save_shift_history()
-
-    old_label = (
-        SHIFT_CONFIG[old_shift]["label"]
-        if old_shift in SHIFT_CONFIG
-        else "BELUM ADA"
-    )
-
-    await update.message.reply_text(
-        (
-            "✅ *PERGANTIAN SHIFT BERHASIL*\n\n"
-            f"👤 Staff: {target.full_name}\n"
-            f"📌 Shift Lama: {old_label}\n"
-            f"📌 Shift Baru: {SHIFT_CONFIG[new_shift]['label']}"
-        ),
-        parse_mode="Markdown"
-    )
-
-
-async def id_grup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-    chat = update.effective_chat
-
-    if not user or not is_owner_admin(user.id):
-        return
-
-    await update.message.reply_text(
-        (
-            f"👥 Nama Grup: {chat.title or '-'}\n"
-            f"🆔 Group ID: {chat.id}"
-        )
-    )
-
-
-async def track_all_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await track_member(update)
-
-
-def main():
-
-    if not TOKEN:
-        raise RuntimeError(
-            "BOT_TOKEN belum diisi di Railway Variables"
-        )
-
-    if not ADMIN_IDS:
-        raise RuntimeError(
-            "ADMIN_IDS belum diisi di Railway Variables"
-        )
-
-    load_data()
-
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(
-        ChatMemberHandler(
-            my_chat_member,
-            ChatMemberHandler.MY_CHAT_MEMBER
-        )
-    )
-
-    app.add_handler(
-        CommandHandler("start", start_absensi)
-    )
-
-    app.add_handler(
-        CommandHandler("status", status)
-    )
-
-    app.add_handler(
-        CommandHandler("listshift", list_shift)
-    )
-
-    app.add_handler(
-        CommandHandler("resetshift", reset_shift)
-    )
-
-    app.add_handler(
-        CommandHandler("idgrup", id_grup)
-    )
-
-    app.add_handler(
-        CallbackQueryHandler(
-            handle_absen,
-            pattern="^absen_"
-        )
-    )
-
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & (~filters.COMMAND),
-            track_all_message
-        )
-    )
-
-    app.job_queue.run_repeating(
-        cek_absensi,
-        interval=60,
-        first=15
-    )
-
-    print("BOT ABSENSI AKTIF")
-
-    app.run_polling(
-        drop_pending_updates=True
-    )
-
-
-if __name__ == "__main__":
-    main()
