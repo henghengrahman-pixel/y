@@ -436,3 +436,219 @@ async def start_absensi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+async def handle_absen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    if not query or not query.message:
+        return
+
+    await query.answer()
+
+    user = query.from_user
+    chat = query.message.chat
+
+    if chat.type not in ["group", "supergroup"]:
+
+        return await query.message.reply_text(
+            "❌ Absensi hanya bisa dilakukan di grup."
+        )
+
+    if not is_group_allowed(chat.id):
+
+        return await query.message.reply_text(
+            "❌ Grup belum diizinkan."
+        )
+
+    shift = query.data.replace("absen_", "")
+
+    old_shift_map = {
+        "pagi": "jam_6_pagi",
+        "siang": "jam_11_siang",
+        "malam": "jam_6_sore",
+        "tengah_malam": "jam_11_malam"
+    }
+
+    if shift in old_shift_map:
+        shift = old_shift_map[shift]
+
+    if shift not in SHIFT_CONFIG:
+
+        return await query.message.reply_text(
+            "❌ Shift tidak valid."
+        )
+
+    now = datetime.now(TIMEZONE)
+
+    config = SHIFT_CONFIG[shift]
+
+    mulai = now.replace(
+        hour=config["mulai_jam"],
+        minute=config["mulai_menit"],
+        second=0,
+        microsecond=0
+    )
+
+    batas = now.replace(
+        hour=config["batas_jam"],
+        minute=config["batas_menit"],
+        second=0,
+        microsecond=0
+    )
+
+    if now < mulai:
+
+        return await query.message.reply_text(
+            (
+                f"❌ Absensi {config['label']} belum dibuka.\n\n"
+                f"🕘 Jadwal: {shift_time_text(shift)}"
+            )
+        )
+
+    telat_menit = 0
+
+    if now > batas:
+
+        telat_menit = int(
+            (now - batas).total_seconds() // 60
+        )
+
+        if telat_menit < 1:
+            telat_menit = 1
+
+    denda = telat_menit * DENDA_PER_MENIT
+
+    today = ensure_today()
+
+    if str(user.id) in absensi[today][shift]:
+
+        return await query.message.reply_text(
+            "✅ Kamu sudah absensi hari ini."
+        )
+
+    absensi[today][shift][str(user.id)] = {
+        "nama": user.full_name,
+        "jam": now.strftime("%H:%M:%S"),
+        "telat_menit": telat_menit,
+        "denda": denda
+    }
+
+    save_absensi()
+
+    pesan = (
+        "✅ *ABSENSI BERHASIL*\n\n"
+        f"👤 Staff: {user.full_name}\n"
+        f"📌 Shift: {config['label']}\n"
+        f"🕘 Jam: {now.strftime('%H:%M:%S')} WIB"
+    )
+
+    if telat_menit > 0:
+
+        pesan += (
+            f"\n\n⚠️ Telat: {telat_menit} menit"
+            f"\n💸 Denda: {rupiah(denda)}"
+        )
+
+    await query.message.reply_text(
+        pesan,
+        parse_mode="Markdown"
+    )
+
+
+async def cek_absensi(context: ContextTypes.DEFAULT_TYPE):
+
+    now = datetime.now(TIMEZONE)
+
+    today = ensure_today()
+
+    for shift, config in SHIFT_CONFIG.items():
+
+        notif_key = (
+            f"{today}-{shift}-"
+            f"{config['notif_jam']:02d}"
+            f"{config['notif_menit']:02d}"
+        )
+
+        if notification_history.get(today, {}).get(notif_key):
+            continue
+
+        if (
+            now.hour == config["notif_jam"]
+            and now.minute == config["notif_menit"]
+        ):
+
+            notification_history.setdefault(today, {})
+            notification_history[today][notif_key] = True
+
+            save_notification_history()
+
+
+def main():
+
+    if not TOKEN:
+        raise RuntimeError(
+            "BOT_TOKEN belum diisi"
+        )
+
+    if not ADMIN_IDS:
+        raise RuntimeError(
+            "ADMIN_IDS belum diisi"
+        )
+
+    load_data()
+
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(
+        ChatMemberHandler(
+            my_chat_member,
+            ChatMemberHandler.MY_CHAT_MEMBER
+        )
+    )
+
+    app.add_handler(
+        CommandHandler("start", start_absensi)
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            handle_absen,
+            pattern="^absen_"
+        )
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & (~filters.COMMAND),
+            track_member
+        )
+    )
+
+    app.job_queue.run_repeating(
+        cek_absensi,
+        interval=60,
+        first=15
+    )
+
+    print("BOT ABSENSI AKTIF")
+
+    app.run_polling(
+        drop_pending_updates=True
+    )
+
+
+if __name__ == "__main__":
+
+    try:
+
+        print("STARTING BOT...")
+
+        main()
+
+    except Exception as e:
+
+        print("ERROR START BOT:")
+        print(str(e))
+
+        import traceback
+        traceback.print_exc()
