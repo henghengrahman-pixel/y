@@ -42,7 +42,7 @@ SHIFT_CONFIG = {
         "mulai_jam": 5,
         "mulai_menit": 0,
         "batas_jam": 6,
-        "batas_menit": 15,
+        "batas_menit": 16,
         "notif_jam": 6,
         "notif_menit": 30
     },
@@ -52,7 +52,7 @@ SHIFT_CONFIG = {
         "mulai_jam": 10,
         "mulai_menit": 0,
         "batas_jam": 11,
-        "batas_menit": 15,
+        "batas_menit": 16,
         "notif_jam": 11,
         "notif_menit": 30
     },
@@ -62,7 +62,7 @@ SHIFT_CONFIG = {
         "mulai_jam": 17,
         "mulai_menit": 0,
         "batas_jam": 18,
-        "batas_menit": 15,
+        "batas_menit": 16,
         "notif_jam": 18,
         "notif_menit": 30
     },
@@ -72,7 +72,7 @@ SHIFT_CONFIG = {
         "mulai_jam": 22,
         "mulai_menit": 0,
         "batas_jam": 23,
-        "batas_menit": 15,
+        "batas_menit": 16,
         "notif_jam": 23,
         "notif_menit": 30
     }
