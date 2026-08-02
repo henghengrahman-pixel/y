@@ -36,36 +36,28 @@ SHIFT_FILE = os.path.join(DATA_DIR, "shift_history.json")
 NOTIF_FILE = os.path.join(DATA_DIR, "notification_history.json")
 
 SHIFT_CONFIG = {
-
-    "jam_11_siang": {
-        "label": "SHIFT JAM 11 SIANG",
-        "button": "☀️ SHIFT JAM 11 SIANG",
-        "mulai_jam": 10,
+    "shift_utama": {
+        "label": "SHIFT UTAMA",
+        "button": "✅ ABSEN SHIFT UTAMA",
+        "mulai_jam": 18,
         "mulai_menit": 0,
-        "batas_jam": 11,
-        "batas_menit": 16,
-        "notif_jam": 11,
-        "notif_menit": 30
-    },
-
-    "jam_11_malam": {
-        "label": "SHIFT JAM 11 MALAM",
-        "button": "🌌 SHIFT JAM 11 MALAM",
-        "mulai_jam": 22,
-        "mulai_menit": 0,
-        "batas_jam": 23,
-        "batas_menit": 16,
-        "notif_jam": 23,
+        "batas_jam": 19,
+        "batas_menit": 15,
+        "notif_jam": 19,
         "notif_menit": 30
     }
 }
 
+# Semua data shift lama otomatis dipindahkan ke satu shift utama.
 OLD_SHIFT_MAP = {
-    "siang": "jam_11_siang",
-    "malam": "jam_11_malam",
-    "pagi": "jam_11_siang",
-    "sore": "jam_11_malam",
-    "tengah_malam": "jam_11_malam"
+    "siang": "shift_utama",
+    "malam": "shift_utama",
+    "pagi": "shift_utama",
+    "sore": "shift_utama",
+    "tengah_malam": "shift_utama",
+    "jam_11_siang": "shift_utama",
+    "jam_11_malam": "shift_utama",
+    "shift_utama": "shift_utama"
 }
 
 DENDA_PER_MENIT = 50000
@@ -343,60 +335,24 @@ async def start_absensi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await track_member(update, context)
 
-    user_shift = normalize_shift_key(
-        shift_history.get(str(user.id))
-    )
+    # Semua staff otomatis memakai satu shift utama.
+    shift_history[str(user.id)] = "shift_utama"
+    save_shift_history()
 
-    if user_shift:
-        shift_history[str(user.id)] = user_shift
-        save_shift_history()
-
-    if user_shift:
-
-        config = SHIFT_CONFIG[user_shift]
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    config["button"],
-                    callback_data=f"absen_{user_shift}"
-                )
-            ]
-        ]
-
-    else:
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    SHIFT_CONFIG["jam_11_siang"]["button"],
-                    callback_data="absen_jam_11_siang"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    SHIFT_CONFIG["jam_11_malam"]["button"],
-                    callback_data="absen_jam_11_malam"
-                )
-            ]
-        ]
+    keyboard = [[
+        InlineKeyboardButton(
+            SHIFT_CONFIG["shift_utama"]["button"],
+            callback_data="absen_shift_utama"
+        )
+    ]]
 
     text = (
         "📋 *SISTEM ABSENSI STAFF AKTIF*\n\n"
-
-        "🕘 *JADWAL ABSENSI STAFF*\n\n"
-
-        "☀️ *SHIFT JAM 11 SIANG*\n"
-        f"• {shift_time_text('jam_11_siang')}\n\n"
-
-        "🌌 *SHIFT JAM 11 MALAM*\n"
-        f"• {shift_time_text('jam_11_malam')}\n\n"
-
-        "⏰ Keterlambatan absensi dihitung otomatis oleh sistem.\n"
-        f"💸 Denda keterlambatan: {rupiah(DENDA_PER_MENIT)} per menit.\n\n"
-
-        "⚠️ Shift yang dipilih pertama kali akan menjadi shift tetap staff.\n"
-        "👨‍💼 Hubungi admin grup apabila ingin melakukan pergantian shift."
+        "🕘 *JADWAL ABSENSI*\n"
+        f"• {shift_time_text('shift_utama')}\n\n"
+        "⏰ Batas absensi pukul 19:15 WIB.\n"
+        "⚠️ Mulai pukul 19:16 WIB keterlambatan dihitung otomatis.\n"
+        f"💸 Denda keterlambatan: {rupiah(DENDA_PER_MENIT)} per menit."
     )
 
     await update.message.reply_text(
@@ -565,47 +521,16 @@ async def reset_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not user or not is_owner_admin(user.id):
         return await update.message.reply_text(
-            "❌ Hanya admin utama yang bisa mengganti shift staff."
+            "❌ Hanya admin utama yang bisa mengatur shift staff."
         )
 
     if not update.message.reply_to_message:
         return await update.message.reply_text(
-            (
-                "Reply pesan staff lalu gunakan salah satu command berikut:\n\n"
-
-                "/resetshift jam_11_siang\n"
-                "/resetshift jam_11_malam\n\n"
-
-                "Bisa juga pakai singkat:\n"
-                "/resetshift siang\n"
-                "/resetshift malam"
-            )
-        )
-
-    if len(context.args) < 1:
-        return await update.message.reply_text(
-            (
-                "Masukkan shift baru.\n\n"
-                "Contoh:\n"
-                "/resetshift jam_11_malam"
-            )
-        )
-
-    new_shift = normalize_shift_key(context.args[0])
-
-    if not new_shift:
-        return await update.message.reply_text(
-            "❌ Shift tidak valid."
+            "Reply pesan staff lalu kirim /resetshift untuk menetapkan SHIFT UTAMA."
         )
 
     target = update.message.reply_to_message.from_user
-
-    old_shift = normalize_shift_key(
-        shift_history.get(str(target.id))
-    )
-
-    shift_history[str(target.id)] = new_shift
-
+    shift_history[str(target.id)] = "shift_utama"
     save_shift_history()
 
     members[str(target.id)] = {
@@ -616,21 +541,13 @@ async def reset_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "group_name": update.effective_chat.title or "",
         "last_seen": datetime.now(TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
     }
-
     save_members()
-
-    old_label = (
-        SHIFT_CONFIG[old_shift]["label"]
-        if old_shift in SHIFT_CONFIG
-        else "BELUM ADA"
-    )
 
     await update.message.reply_text(
         (
-            "✅ *PERGANTIAN SHIFT BERHASIL*\n\n"
+            "✅ *SHIFT STAFF BERHASIL DITETAPKAN*\n\n"
             f"👤 Staff: {target.full_name}\n"
-            f"📌 Shift Lama: {old_label}\n"
-            f"📌 Shift Baru: {SHIFT_CONFIG[new_shift]['label']}"
+            "📌 Shift: SHIFT UTAMA"
         ),
         parse_mode="Markdown"
     )
@@ -693,7 +610,7 @@ async def list_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Belum ada data shift staff."
         )
 
-    hasil = "📋 *DATA SHIFT STAFF*\n\n"
+    hasil = "📋 *DATA STAFF SHIFT UTAMA*\n\n"
 
     for shift_key, config in SHIFT_CONFIG.items():
 
@@ -743,20 +660,15 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         "📋 *MENU BOT ABSENSI*\n\n"
-
         "👥 *Staff:*\n"
         "/start - Buka menu absensi\n\n"
-
         "👨‍💼 *Admin:*\n"
         "/status - Lihat absensi hari ini\n"
-        "/listshift - Lihat daftar shift staff\n"
+        "/listshift - Lihat daftar staff\n"
         "/idgrup - Lihat ID grup\n"
         "/ping - Cek bot online\n\n"
-
-        "🔁 *Ganti Shift Staff:*\n"
-        "Reply pesan staff lalu kirim:\n"
-        "/resetshift jam_11_siang\n"
-        "/resetshift jam_11_malam"
+        "🔁 *Tetapkan Staff:*\n"
+        "Reply pesan staff lalu kirim /resetshift"
     )
 
     await update.message.reply_text(
