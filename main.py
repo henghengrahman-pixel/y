@@ -355,11 +355,11 @@ async def start_absensi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]]
 
     text = (
-        "📋 *SISTEM ABSENSI STAFF AKTIF*\n\n"
+        "📋 * ABSENSI STAFF G-8008 POIPET *\n\n"
         "🕘 *JADWAL ABSENSI*\n"
         f"• {shift_time_text('shift_utama')}\n\n"
         "⏰ Batas absensi pukul 19:15 WIB.\n"
-        "⚠️ Mulai pukul 19:16 WIB keterlambatan dihitung otomatis.\n"
+        "⚠️ JANGAN ABSEN SEBELUM MASUK KANTOR ! ADA SANGSI TEGAS JIKA DI LANGGAR  \n"
         f"💸 Denda keterlambatan: {rupiah(DENDA_PER_MENIT)} per menit."
     )
 
