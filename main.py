@@ -47,11 +47,11 @@ SHIFT_CONFIG = {
     "shift_pagi": {
         "label": "SHIFT PAGI",
         "button": "☀️ ABSEN SHIFT PAGI",
-        "mulai_jam": 8,
+        "mulai_jam": 9,
         "mulai_menit": 15,
-        "batas_jam": 9,
+        "batas_jam": 11,
         "batas_menit": 15,
-        "notif_jam": 9,
+        "notif_jam": 12,
         "notif_menit": 45
     },
     "shift_malam": {
@@ -59,10 +59,10 @@ SHIFT_CONFIG = {
         "button": "🌙 ABSEN SHIFT MALAM",
         "mulai_jam": 20,
         "mulai_menit": 15,
-        "batas_jam": 21,
+        "batas_jam": 23,
         "batas_menit": 15,
-        "notif_jam": 21,
-        "notif_menit": 45
+        "notif_jam": 23,
+        "notif_menit": 50
     }
 }
 
@@ -424,8 +424,8 @@ async def start_absensi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• SHIFT PAGI: {shift_time_text('shift_pagi')}\n"
         f"• SHIFT MALAM: {shift_time_text('shift_malam')}\n"
         f"{info_shift}\n"
-        "✅ Tepat waktu sampai 09:15:59 / 21:15:59 WIB.\n"
-        "⚠️ Mulai 09:16 / 21:16 dihitung TELAT 1 menit.\n"
+        "✅ Tepat waktu sampai 11:15:59 / 23:15:59 WIB.\n"
+        "⚠️ Mulai 11:16 / 23:16 dihitung TELAT 1 menit.\n"
         "⚠️ JANGAN ABSEN SEBELUM MASUK KANTOR! ADA SANKSI TEGAS JIKA DILANGGAR.\n"
         f"💸 Denda keterlambatan: {rupiah(DENDA_PER_MENIT)} per menit."
     )
